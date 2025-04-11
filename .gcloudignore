@@ -1,0 +1,61 @@
+# --- Python Virtual Environment ---
+# Definitely ignore this! It shouldn't be deployed.
+venv/
+/venv/  # More specific way to ignore root venv
+
+# --- Python Cache & Compiled Files ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- IDE / Editor Configuration ---
+.idea/
+.vscode/
+*.sublime-*
+.project
+.pydevproject
+.settings/
+
+# --- Testing Files & Artifacts ---
+tests/
+test/
+*.test.py
+test_*.py
+pytest.ini
+.pytest_cache/
+coverage.xml
+.coverage
+
+# --- Local Configuration / Secrets ---
+# Be careful not to deploy sensitive files
+# You might want to ignore your config.ini if it's only for local use
+secrets.yaml
+.env
+*.env
+
+# --- Documentation ---
+docs/
+_build/
+
+# --- Deployment / Test Scripts ---
+# Usually not needed in the function's runtime environment
+deploy_function.sh
+test.sh
+*.sh
+
+# --- OS-specific files ---
+.DS_Store
+Thumbs.db
+
+# --- Git files ---
+# Usually good practice, though gcloud might ignore some automatically
+.git/
+.gitignore
+.gitattributes
+
+# --- Other Build/Dependency Artifacts ---
+# Add others specific to your project if needed
+# build/
+# dist/
+# *.egg-info/
