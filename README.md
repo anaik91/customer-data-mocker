@@ -12,31 +12,30 @@
     *   Populate it with the following structure, **editing the values** (especially `name` and `region`) according to your needs:
         ```ini
         # Configuration for Cloud Function Deployment and Testing
-
         [Function]
         # REQUIRED: Name for the deployed Cloud Function
-        name = customer-api
+        name=customer-api
 
         # REQUIRED: GCP region for deployment
-        region = us-central1
+        region=us-central1
 
         # REQUIRED: Python runtime version (e.g., python39, python310, python311, python312)
-        runtime = python312
+        runtime=python312
 
         # REQUIRED: Function name in main.py to execute
-        entry_point = customer_api_conditional
+        entry_point=customer_api
 
         # Directory containing source code (usually .)
-        source_dir = .
+        source_dir=.
 
         # Set to true for public access, false for IAM-only
-        allow_unauthenticated = true
+        allow_unauthenticated=true
 
         # OPTIONAL: Function memory allocation
-        memory = 256MiB
+        memory=256MiB
 
         # OPTIONAL: Function execution timeout
-        timeout = 60s
+        timeout=60s
         ```
 
 3.  **Create Virtual Environment:** (Recommended for isolating dependencies)
@@ -137,28 +136,30 @@ After deployment, you can use the `test.sh` script to verify the function's endp
 This file centralizes settings used by the deployment and testing scripts.
 
 ```ini
+# Configuration for Cloud Function Deployment and Testing
+
 [Function]
-# Name for the deployed Cloud Function (REQUIRED)
-name = customer-api
+# REQUIRED: Name for the deployed Cloud Function
+name=customer-api
 
-# GCP region for deployment (e.g., us-central1, europe-west1) (REQUIRED)
-region = us-central1
+# REQUIRED: GCP region for deployment
+region=us-central1
 
-# Python runtime version (e.g., python39, python310, python311, python312) (REQUIRED)
-runtime = python312
+# REQUIRED: Python runtime version (e.g., python39, python310, python311, python312)
+runtime=python312
 
-# Function name in main.py decorated with @functions_framework.http (REQUIRED)
-entry_point = customer_api_conditional
+# REQUIRED: Function name in main.py to execute
+entry_point=customer_api
 
-# Directory containing source code relative to script location (default .)
-source_dir = .
+# Directory containing source code (usually .)
+source_dir=.
 
-# Allow public HTTP access without authentication (true/false) (default: false in script if missing)
-allow_unauthenticated = true
+# Set to true for public access, false for IAM-only
+allow_unauthenticated=true
 
-# Cloud Function memory allocation (e.g., 128MiB, 256MiB, 512MiB) (optional, default: 256MiB in script)
-memory = 256MiB
+# OPTIONAL: Function memory allocation
+memory=256MiB
 
-# Cloud Function execution timeout (e.g., 60s, 120s, 300s) (optional, default: 60s in script)
-timeout = 60s
+# OPTIONAL: Function execution timeout
+timeout=60s
 ```
