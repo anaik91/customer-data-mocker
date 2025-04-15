@@ -15,6 +15,28 @@ customer_data = generate_customer_data(NUMBER_TO_GENERATE)
 print("Customer data generated.")
 
 # --- Data Access Functions ---
+def get_customer_data_by_email(email_to_find: str):
+    """
+    Finds a customer profile dictionary by matching the email address.
+
+    Args:
+        email_to_find: The email address to search for.
+
+    Returns:
+        The dictionary representing the customer profile if found, otherwise None.
+    """
+    if not email_to_find: # Handle empty email case
+        return None
+
+    print(f"Searching for email: {email_to_find}")
+    for customer_profile in customer_data:
+        # Access the nested customer dictionary and then the email field
+        if customer_profile.get("customer", {}).get("email") == email_to_find:
+            print(f"Found customer profile for email: {email_to_find}")
+            return customer_profile # Return the whole profile dictionary
+
+    print(f"Email not found: {email_to_find}")
+    return None # Return None if no match is found after checking all profiles
 
 def get_all_emails() -> list[str]:
     """Extracts and returns a list of all customer email addresses."""
@@ -166,6 +188,14 @@ def customer_api_conditional(request):
 
     # === Other Routes (GET /users, GET /list_emails, GET /) ===
     elif path == '/users':
+        email_param = request.args.get("email")
+        if email_param:
+            # If email parameter is provided, try to find the customer
+            found_customer = get_customer_data_by_email(email_param)
+            if found_customer:
+                return jsonify(found_customer), 200 # OK
+            else:
+                return jsonify({"error": "Customer not found for the provided email", "email": email_param}), 404 # Not
         if method == 'GET': return jsonify(customer_data), 200 # Simplified for brevity
         else: return jsonify({"error": f"Method Not Allowed for {path}"}), 405
     elif path == '/list_emails':
