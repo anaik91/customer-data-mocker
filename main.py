@@ -191,7 +191,6 @@ def customer_api_conditional(request):
     elif path == '/users':
         if method == 'POST':
             json_data = request.get_json(silent=True)
-            json_data = request.get_json(silent=True)
             if not json_data: return jsonify({"error": "Invalid or missing JSON request body."}), 400
             print(json_data)
             email_param = json_data.get("email")
