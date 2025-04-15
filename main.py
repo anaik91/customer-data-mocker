@@ -9,10 +9,11 @@ from typing import Dict, Any, Literal, Tuple, Optional # Added Tuple, Optional
 from models import generate_customer_data
 
 # --- Data Generation ---
-NUMBER_TO_GENERATE = 20
-print(f"Generating {NUMBER_TO_GENERATE} customer profiles...")
-customer_data = generate_customer_data(NUMBER_TO_GENERATE)
-print("Customer data generated.")
+
+NUM_PROFILES_TO_GENERATE = 20 # Generate a few more to see variation
+RANDOM_SEED = 123
+print(f"Generating {NUM_PROFILES_TO_GENERATE} customer profiles...")
+customer_data = generate_customer_data(NUM_PROFILES_TO_GENERATE, seed=RANDOM_SEED)
 
 # --- Data Access Functions ---
 def get_customer_data_by_email(email_to_find: str):
@@ -188,16 +189,20 @@ def customer_api_conditional(request):
 
     # === Other Routes (GET /users, GET /list_emails, GET /) ===
     elif path == '/users':
-        email_param = request.args.get("email")
-        if email_param:
-            # If email parameter is provided, try to find the customer
-            found_customer = get_customer_data_by_email(email_param)
-            if found_customer:
-                return jsonify(found_customer), 200 # OK
-            else:
-                return jsonify({"error": "Customer not found for the provided email", "email": email_param}), 404 # Not
-        if method == 'GET': return jsonify(customer_data), 200 # Simplified for brevity
-        else: return jsonify({"error": f"Method Not Allowed for {path}"}), 405
+        if method == 'POST':
+            json_data = request.get_json(silent=True)
+            json_data = request.get_json(silent=True)
+            if not json_data: return jsonify({"error": "Invalid or missing JSON request body."}), 400
+            print(json_data)
+            email_param = json_data.get("email")
+            if email_param:
+                # If email parameter is provided, try to find the customer
+                found_customer = get_customer_data_by_email(email_param)
+                if found_customer:
+                    return jsonify(found_customer), 200 # OK
+                else:
+                    return jsonify({"error": "Customer not found for the provided email", "email": email_param}), 404 # Not
+        else: return jsonify({"error": "Method Not Allowed. Use POST."}), 405
     elif path == '/list_emails':
         if method == 'GET': return jsonify(get_all_emails()), 200
         else: return jsonify({"error": f"Method Not Allowed for {path}"}), 405
