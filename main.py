@@ -5,20 +5,18 @@ import json
 from typing import Dict, Any, Literal, Tuple, Optional
 
 # Import the data generator FROM YOUR models.py file!
-# Make sure models.py contains the LATEST non-null/non-empty generator
+# Make sure models.py contains the LATEST non-null/non-empty generator with order_id
 try:
     from models import generate_customer_data
 except ImportError:
     print("ERROR: Cannot import 'generate_customer_data' from 'models'. Ensure models.py exists and is correct.")
-    # Provide a dummy function or raise error to prevent proceeding
     def generate_customer_data(num, seed=None): return []
-    # raise # Or uncomment to stop execution if models is essential
+    # raise
 
 # --- Data Generation ---
 NUM_PROFILES_TO_GENERATE = 20
 RANDOM_SEED = 123
 print(f"Generating {NUM_PROFILES_TO_GENERATE} customer profiles...")
-# Ensure the generator being called is the non-null/non-empty one
 customer_data = generate_customer_data(NUM_PROFILES_TO_GENERATE, seed=RANDOM_SEED)
 print("Customer profile generation complete.")
 
@@ -67,7 +65,7 @@ def _analyze_return_request(
     return_reason: ValidReturnReason
 ) -> AnalysisResult:
     """Applies the flowchart logic (excluding CounterAct) to determine return outcome."""
-    print(f"Analyzing return: Item='{item_dict.get('item_name')}', Reason='{return_reason}', TX ID='{purchase_dict.get('transaction_id')}'")
+    print(f"Analyzing return: Item='{item_dict.get('item_name')}', Reason='{return_reason}', Order ID='{purchase_dict.get('order_id')}'") # Log Order ID
     total_transaction_value = purchase_dict.get("total_amount", 0.01)
     item_price = item_dict.get("price", 0.01) * item_dict.get("quantity", 1)
     item_is_highly_abused = is_highly_abused(item_dict)
@@ -116,36 +114,35 @@ def _analyze_return_request(
                     print(f"-> TX Val (${total_transaction_value:.2f}) <= $30. Return the item (No CounterAct).")
                     return {"isChat": False, "ReturnNeeded": True, "AutomatedReturn": True}
 
-# Helper to find purchase and EXACT item ID
-def find_purchase_and_item_exact(transaction_id: str, item_id: str) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
-    """Searches customer_data for a specific transaction and EXACT item ID."""
-    print(f"Searching for transaction_id='{transaction_id}', exact item_id='{item_id}'")
+# Renamed Helper: find purchase by order_id and EXACT item ID
+def find_purchase_by_order_and_item(order_id: str, item_id: str) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    """Searches customer_data for a specific purchase by order_id and EXACT item ID."""
+    print(f"Searching for order_id='{order_id}', exact item_id='{item_id}'")
     for profile in customer_data:
         customer_info = profile.get("customer", {})
         purchases = profile.get("recent_purchases", [])
         if not purchases: continue
         for purchase in purchases:
-            if purchase.get("transaction_id") == transaction_id:
+            # *** USE order_id FOR MATCHING ***
+            if purchase.get("order_id") == order_id:
                 items = purchase.get("items", [])
                 if not items:
-                    print(f"Transaction '{transaction_id}' found, but it has no items listed.")
+                    print(f"Order '{order_id}' found, but it has no items listed.")
                     return purchase, None
                 for item in items:
                     if item.get("item_id") == item_id:
-                        print("Found matching purchase and item.")
+                        print("Found matching order and item.")
                         return purchase, item
-                print(f"Transaction '{transaction_id}' found, but item '{item_id}' not found within it.")
+                print(f"Order '{order_id}' found, but item '{item_id}' not found within it.")
                 return purchase, None
-    print(f"Transaction '{transaction_id}' not found across all profiles.")
+    print(f"Order '{order_id}' not found across all profiles.")
     return None
 
 # --- Helper for Literal Validation ---
-# Place this before the function using it
 import sys
 if sys.version_info >= (3, 8):
     from typing import get_args
 else:
-    # Basic fallback for older versions
     def get_args(tp): return getattr(tp, '__args__', ())
 
 
@@ -175,40 +172,40 @@ def customer_api_conditional(request):
         if method == 'GET': return jsonify(get_all_emails()), 200
         else: return jsonify({"error": f"Method Not Allowed for {path}. Use GET."}), 405
 
-    # === NEW Route: /analyze_tx (POST) ===
+    # === MODIFIED Route: /analyze_tx (POST) ===
     elif path == '/analyze_tx':
         if method == 'POST':
             json_data = request.get_json(silent=True)
             if not json_data: return jsonify({"error": "Invalid or missing JSON request body."}), 400
 
-            # 1. Validate Input Fields
-            required_fields = ["transaction_id", "item_id", "return_reason"]
+            # 1. Validate Input Fields (expecting order_id now)
+            required_fields = ["order_id", "item_id", "return_reason"] # Changed
             missing_fields = [field for field in required_fields if field not in json_data]
             if missing_fields: return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
-            transaction_id = json_data.get("transaction_id")
+            order_id = json_data.get("order_id") # Changed
             item_id = json_data.get("item_id")
             return_reason = json_data.get("return_reason")
 
             # Basic type validation
-            if not isinstance(transaction_id, str) or not transaction_id: return jsonify({"error": "'transaction_id' must be a non-empty string."}), 400
+            if not isinstance(order_id, str) or not order_id: return jsonify({"error": "'order_id' must be a non-empty string."}), 400 # Changed
             if not isinstance(item_id, str) or not item_id: return jsonify({"error": "'item_id' must be a non-empty string."}), 400
-            # Validate return_reason against the Literal
             valid_reasons = get_args(ValidReturnReason)
             if return_reason not in valid_reasons:
                 return jsonify({"error": f"'return_reason' must be one of: {valid_reasons}"}), 400
 
-            # 2. Find the Purchase and Item
-            found_data = find_purchase_and_item_exact(transaction_id, item_id)
+            # 2. Find the Purchase and Item using the MODIFIED function
+            found_data = find_purchase_by_order_and_item(order_id, item_id) # Changed
 
+            # UPDATED error messages
             if found_data is None:
-                return jsonify({"error": "Transaction not found", "transaction_id": transaction_id}), 404
+                return jsonify({"error": "Order not found", "order_id": order_id}), 404 # Changed
             else:
                 purchase_dict, item_dict = found_data
                 if item_dict is None:
                     return jsonify({
-                        "error": "Item not found within the specified transaction",
-                        "transaction_id": transaction_id,
+                        "error": "Item not found within the specified order", # Changed
+                        "order_id": order_id, # Changed
                         "item_id_searched": item_id
                     }), 404
 
@@ -219,26 +216,24 @@ def customer_api_conditional(request):
                     purchase_dict=purchase_dict,
                     return_reason=return_reason
                 )
-                # Return the specific boolean structure
                 return jsonify(analysis_result), 200
             except Exception as e:
-                # Catch potential errors during analysis
                 print(f"ERROR during return analysis: {e}")
                 return jsonify({"error": "Internal server error during return analysis."}), 500
 
-        else:
-            return jsonify({"error": "Method Not Allowed. Use POST."}), 405
+        else: return jsonify({"error": "Method Not Allowed. Use POST."}), 405
 
     # === Route: / (GET) ===
     elif path == '/':
         if method == 'GET':
+            # UPDATED description
             return jsonify({
                "message": "Welcome to the Customer API (Conditional Routing)",
                "endpoints": {
                    "GET /": "Get API information.",
                    "POST /users": "Get specific customer profile by email (JSON body: {'email': 'user@example.com'}).",
                    "GET /list_emails": "Get a list of all unique customer emails.",
-                   "POST /analyze_tx": "Analyze return request (JSON body: {'transaction_id': '...', 'item_id': '...', 'return_reason': '...'})."
+                   "POST /analyze_tx": "Analyze return request (JSON body: {'order_id': '...', 'item_id': '...', 'return_reason': '...'})." # Changed
                }
             }), 200
         else: return jsonify({"error": f"Method Not Allowed for {path}. Use GET."}), 405

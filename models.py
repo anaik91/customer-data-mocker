@@ -3,59 +3,51 @@ import json
 import random
 import uuid
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any  # Optional still useful for internal logic/from_dict
+from typing import List, Optional, Dict, Any
 from faker import Faker
 
 # --- Placeholders ---
 PLACEHOLDER_DATE = "DATE_NOT_APPLICABLE"
 PLACEHOLDER_TRACKING = "TRACKING_NOT_APPLICABLE"
 PLACEHOLDER_CIRCLE_NUM = "CIRCLE_NUMBER_NOT_APPLICABLE"
-PLACEHOLDER_ADDRESS_FIELD = "N/A" # Placeholder for address fields if needed by from_dict
+PLACEHOLDER_ADDRESS_FIELD = "N/A"
 
-# --- Class Definitions (Updated for Non-Empty) ---
+# --- Class Definitions ---
 @dataclass
 class Address:
-    # These are guaranteed non-empty by _create_random_address
     street_address: str = PLACEHOLDER_ADDRESS_FIELD
     city: str = PLACEHOLDER_ADDRESS_FIELD
     state: str = PLACEHOLDER_ADDRESS_FIELD
-    zip_code: str = "00000" # Needs a valid-ish format placeholder
+    zip_code: str = "00000"
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, str]]) -> Optional['Address']:
         if data is None: return None
-        # Basic creation, generator ensures non-empty
         return cls(**{k: v for k, v in data.items() if k in cls.__annotations__})
 
 @dataclass
 class Preferences:
-    # Generator ensures non-empty lists
-    communication: List[str] = field(default_factory=lambda: ["email"]) # Default non-empty
-    interests: List[str] = field(default_factory=lambda: ["general"]) # Default non-empty
+    communication: List[str] = field(default_factory=lambda: ["email"])
+    interests: List[str] = field(default_factory=lambda: ["general"])
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, List[str]]]) -> 'Preferences':
-        if data is None: return cls() # Returns default non-empty lists
-        # Ensure lists are non-empty if provided
-        comm = data.get("communication", [])
-        ints = data.get("interests", [])
-        if not comm: comm = ["email"] # Fallback
-        if not ints: ints = ["general"] # Fallback
+        if data is None: return cls()
+        comm = data.get("communication", []) or ["email"]
+        ints = data.get("interests", []) or ["general"]
         return cls(communication=comm, interests=ints)
 
 @dataclass
 class Item:
-    # Generator ensures non-empty/non-zero
     item_id: str = "ITEM_UNKNOWN"
     item_name: str = "Unknown Item"
     category: str = "General"
-    quantity: int = 1 # Default >= 1
-    price: float = 0.01 # Default > 0
+    quantity: int = 1
+    price: float = 0.01
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> Optional['Item']:
         if data is None: return None
-        # Add validation/defaults if creating from potentially incomplete dict
         data.setdefault("item_id", "ITEM_UNKNOWN")
         data.setdefault("item_name", "Unknown Item")
         data.setdefault("category", "General")
@@ -67,44 +59,41 @@ class Item:
 
 @dataclass
 class Purchase:
-    # Generator ensures non-empty/placeholders
+    # Added order_id
     transaction_id: str = "TRANS_UNKNOWN"
+    order_id: str = "ORDER_UNKNOWN" # <-- ADDED
     purchase_date: str = "DATE_UNKNOWN"
     delivered_date: str = PLACEHOLDER_DATE
     estimated_delivery_date: str = PLACEHOLDER_DATE
     store_id: str = "0000"
     store_name: str = "Unknown Store"
     items: List[Item] = field(default_factory=list)
-    total_amount: float = 0.01 # Default > 0
+    total_amount: float = 0.01
     payment_method: str = "Unknown"
     order_type: str = "Unknown"
-    shipping_address: Address = field(default_factory=Address) # Generator ensures populated Address
+    shipping_address: Address = field(default_factory=Address)
     tracking_number: str = PLACEHOLDER_TRACKING
     order_status: str = "Unknown"
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> Optional['Purchase']:
         if data is None: return None
-        # Add more robust validation/defaults if needed
         items_data = data.get("items", [])
         shipping_address_data = data.get("shipping_address")
         valid_data = {k: v for k, v in data.items() if k in cls.__annotations__}
         valid_data["items"] = [Item.from_dict(item_data) for item_data in items_data if item_data]
         address_obj = Address.from_dict(shipping_address_data)
-        valid_data["shipping_address"] = address_obj if address_obj else Address() # Use default Address
-        # Ensure required string fields are non-empty
-        for key in ["transaction_id", "purchase_date", "store_id", "store_name", "payment_method", "order_type", "order_status"]:
-             if not valid_data.get(key): valid_data[key] = "UNKNOWN" # Or specific placeholder
-        # Ensure optional fields are non-empty or placeholder
+        valid_data["shipping_address"] = address_obj if address_obj else Address()
+        # Updated loop to include order_id
+        for key in ["transaction_id", "order_id", "purchase_date", "store_id", "store_name", "payment_method", "order_type", "order_status"]:
+             if not valid_data.get(key): valid_data[key] = "UNKNOWN"
         for key, placeholder in [("delivered_date", PLACEHOLDER_DATE), ("estimated_delivery_date", PLACEHOLDER_DATE), ("tracking_number", PLACEHOLDER_TRACKING)]:
              if not valid_data.get(key): valid_data[key] = placeholder
         if valid_data.get("total_amount", 0) <= 0 and valid_data["items"]: valid_data["total_amount"] = 0.01
-
         return cls(**valid_data)
 
 @dataclass
 class Recommendation:
-    # Generator ensures non-empty
     item_id: str = "REC_ITEM_UNKNOWN"
     item_name: str = "Recommended Item"
     category: str = "General"
@@ -113,7 +102,6 @@ class Recommendation:
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> Optional['Recommendation']:
         if data is None: return None
-        # Ensure non-empty on creation from dict
         data.setdefault("item_id", "REC_ITEM_UNKNOWN")
         data.setdefault("item_name", "Recommended Item")
         data.setdefault("category", "General")
@@ -122,7 +110,6 @@ class Recommendation:
 
 @dataclass
 class Customer:
-    # Generator ensures non-empty/placeholders
     customer_id: str = "CUST_UNKNOWN"
     first_name: str = "First"
     last_name: str = "Last"
@@ -130,8 +117,8 @@ class Customer:
     email: str = "unknown@example.com"
     target_circle_member: bool = False
     target_circle_number: str = PLACEHOLDER_CIRCLE_NUM
-    address: Address = field(default_factory=Address) # Generator ensures populated
-    preferences: Preferences = field(default_factory=Preferences) # Generator ensures populated
+    address: Address = field(default_factory=Address)
+    preferences: Preferences = field(default_factory=Preferences)
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> Optional['Customer']:
@@ -142,10 +129,8 @@ class Customer:
         address_obj = Address.from_dict(address_data)
         valid_data["address"] = address_obj if address_obj else Address()
         valid_data["preferences"] = Preferences.from_dict(preferences_data) if preferences_data else Preferences()
-        # Ensure required strings non-empty
         for key in ["customer_id", "first_name", "last_name", "phone_number", "email"]:
              if not valid_data.get(key): valid_data[key] = "UNKNOWN"
-        # Ensure circle number non-empty
         if not valid_data.get("target_circle_number"): valid_data["target_circle_number"] = PLACEHOLDER_CIRCLE_NUM
         return cls(**valid_data)
 
@@ -153,17 +138,15 @@ class Customer:
 fake = Faker()
 
 # --- Constants ---
-COMMUNICATION_PREFS = ["email", "text", "phone", "mail"]
-INTERESTS = ["electronics", "home goods", "clothing", "groceries", "toys", "books", "sports", "outdoors", "beauty", "pharmacy", "baby", "pets", "entertainment"]
-PAYMENT_METHODS = ["Credit Card", "Debit Card", "Cash", "Target Credit Card", "Gift Card", "PayPal"]
-ORDER_TYPES = ["In-Store", "Online - Shipped", "Online - Pickup"]
-ORDER_STATUS_SHIPPED = ["Processing", "Shipped", "In Transit", "Out for Delivery", "Delivered", "Delayed", "Cancelled"]
-ORDER_STATUS_PICKUP = ["Processing", "Ready for Pickup", "Picked Up", "Cancelled"]
-ORDER_STATUS_INSTORE = ["Completed", "Returned"]
-STORES = [f"Target - {fake.city() or 'Anytown'}" for _ in range(20)] + ["Target.com"] # Add fallback city
-# Ensure stores list isn't empty
+COMMUNICATION_PREFS = ["email", "text", "phone", "mail"] or ["email"]
+INTERESTS = ["electronics", "home goods", "clothing", "groceries", "toys", "books", "sports", "outdoors", "beauty", "pharmacy", "baby", "pets", "entertainment"] or ["general"]
+PAYMENT_METHODS = ["Credit Card", "Debit Card", "Cash", "Target Credit Card", "Gift Card", "PayPal"] or ["Unknown"]
+ORDER_TYPES = ["In-Store", "Online - Shipped", "Online - Pickup"] or ["Unknown"]
+ORDER_STATUS_SHIPPED = ["Processing", "Shipped", "In Transit", "Out for Delivery", "Delivered", "Delayed", "Cancelled"] or ["Unknown"]
+ORDER_STATUS_PICKUP = ["Processing", "Ready for Pickup", "Picked Up", "Cancelled"] or ["Unknown"]
+ORDER_STATUS_INSTORE = ["Completed", "Returned"] or ["Unknown"]
+STORES = [f"Target - {fake.city() or 'Anytown'}" for _ in range(20)] + ["Target.com"]
 if not STORES: STORES = ["Default Store"]
-# Ensure sample items have non-empty names/categories and positive price
 SAMPLE_ITEMS = [
     (tpl[0] or f"ITEM_UNKNOWN_{i}", tpl[1] or f"Unknown Item {i}", tpl[2] or "General", max(0.01, tpl[3]))
     for i, tpl in enumerate([
@@ -175,42 +158,27 @@ SAMPLE_ITEMS = [
         ("ITEM_SHIRT", "Goodfellow T-Shirt", "Clothing", 12.00),
         ("ITEM_MILK", "Gallon Whole Milk", "Groceries", 3.50),
         ("ITEM_LEGO", "LEGO Star Wars Set", "Toys", 49.99),
-        # Add a default item if the list could somehow be empty
     ])
 ] or [("ITEM_DEFAULT", "Default Product", "General", 9.99)]
 RECOMMENDATION_REASONS = [
     "Frequently purchased together", "Based on your recent browsing history", "Customers who bought items in {category} also bought this",
     "Because you purchased {item_name}", "Popular item in your area", "Based on your interest in {interest}", "Top rated in {category}",
-] or ["Recommended for you"] # Fallback reason
+] or ["Recommended for you"]
 
-# --- Helper Functions (Updated for Non-Empty Placeholders) ---
+# --- Helper Functions ---
 
 def _create_random_address() -> Address:
-    """Generates an Address object with guaranteed non-empty string fields."""
     street = ""
-    # Initialize first, THEN loop
-    while not street:
-        street = fake.street_address() or "123 Main St" # Fallback
-
+    while not street: street = fake.street_address() or "123 Main St"
     city = ""
-    # Initialize first, THEN loop
-    while not city:
-        city = fake.city() or "Anytown" # Fallback
-
+    while not city: city = fake.city() or "Anytown"
     state = ""
-    # Initialize first, THEN loop
-    while not state:
-        state = fake.state_abbr() or "CA" # Fallback
-
+    while not state: state = fake.state_abbr() or "CA"
     zip_code = ""
-    # Initialize first, THEN loop
-    while not zip_code:
-        zip_code = fake.zipcode() or "90210" # Fallback
-
+    while not zip_code: zip_code = fake.zipcode() or "90210"
     return Address(street_address=street, city=city, state=state, zip_code=zip_code)
 
 def _create_random_preferences() -> Preferences:
-    """Generates Preferences, ensuring lists are non-empty."""
     num_comm = random.randint(1, len(COMMUNICATION_PREFS))
     num_int = random.randint(1, 6)
     comm = random.sample(COMMUNICATION_PREFS, k=num_comm)
@@ -221,7 +189,6 @@ def _create_random_preferences() -> Preferences:
     return Preferences(communication=comm, interests=ints)
 
 def _create_random_item() -> Item:
-    """Generates Item, ensuring quantity > 0 and non-empty fields."""
     item_tpl = random.choice(SAMPLE_ITEMS)
     quantity = random.randint(1, 3)
     price = round(item_tpl[3] * random.uniform(0.95, 1.05), 2)
@@ -231,40 +198,38 @@ def _create_random_item() -> Item:
     item_id_suffix = str(uuid.uuid4())[:4]
     return Item(
         item_id=f"{item_id_base}_{item_id_suffix}" if item_id_base else f"UNKNOWN_{item_id_suffix}",
-        item_name=item_tpl[1], # Already ensured non-empty in constant definition
-        category=item_tpl[2], # Already ensured non-empty in constant definition
-        quantity=quantity,
-        price=price
+        item_name=item_tpl[1], category=item_tpl[2], quantity=quantity, price=price
     )
 
 def _create_random_purchase(customer_address: Address) -> Purchase:
-    """Generates a Purchase ensuring no fields are None or empty string (uses placeholders)."""
-    # Choose constants safely
-    chosen_store_name = random.choice(STORES) if STORES else "Default Store"
-    chosen_payment_method = random.choice(PAYMENT_METHODS) if PAYMENT_METHODS else "Unknown"
-    chosen_order_type = random.choice(ORDER_TYPES) if ORDER_TYPES else "Unknown"
+    """Generates a Purchase ensuring no fields are None or empty string (uses placeholders). Includes order_id."""
+    chosen_store_name = random.choice(STORES)
+    chosen_payment_method = random.choice(PAYMENT_METHODS)
+    chosen_order_type = random.choice(ORDER_TYPES)
+    transaction_id = "TRANS_" + str(uuid.uuid4())
+    order_id = "ORDER_" + str(uuid.uuid4()) # <-- Generate Order ID
 
     purchase_obj = Purchase(
-        transaction_id="TRANS_" + str(uuid.uuid4()),
-        purchase_date="", # Will be overwritten
+        transaction_id=transaction_id,
+        order_id=order_id, # <-- Assign Order ID
+        purchase_date="",
         delivered_date=PLACEHOLDER_DATE,
         estimated_delivery_date=PLACEHOLDER_DATE,
         store_id=str(random.randint(1000, 9999)),
         store_name=chosen_store_name,
         items=[],
-        total_amount=0.01, # Will be overwritten > 0
+        total_amount=0.01,
         payment_method=chosen_payment_method,
         order_type=chosen_order_type,
-        shipping_address=customer_address, # Use non-empty customer address
+        shipping_address=customer_address,
         tracking_number=PLACEHOLDER_TRACKING,
-        order_status="" # Will be overwritten
+        order_status=""
     )
 
     num_items = random.randint(1, 5)
     purchase_obj.items = [_create_random_item() for _ in range(num_items)]
     purchase_obj.total_amount = round(sum(item.price * item.quantity for item in purchase_obj.items), 2)
-    if purchase_obj.items and purchase_obj.total_amount <= 0:
-        purchase_obj.total_amount = 0.01
+    if purchase_obj.items and purchase_obj.total_amount <= 0: purchase_obj.total_amount = 0.01
 
     start_date_2025 = datetime.datetime(2025, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
     end_date_2025 = datetime.datetime(2026, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
@@ -277,11 +242,11 @@ def _create_random_purchase(customer_address: Address) -> Purchase:
     purchase_obj.purchase_date = purchase_datetime.isoformat(timespec='seconds').replace("+00:00", "Z")
 
     if purchase_obj.order_type == "In-Store":
-        status_pool = ORDER_STATUS_INSTORE or ["Unknown"]
+        status_pool = ORDER_STATUS_INSTORE
         purchase_obj.order_status = random.choice(status_pool)
         if purchase_obj.order_status == "Completed": purchase_obj.delivered_date = purchase_obj.purchase_date
     elif purchase_obj.order_type == "Online - Pickup":
-        status_pool = ORDER_STATUS_PICKUP or ["Unknown"]
+        status_pool = ORDER_STATUS_PICKUP
         purchase_obj.order_status = random.choice(status_pool)
         if purchase_obj.order_status == "Picked Up":
              pickup_delay = datetime.timedelta(days=random.randint(0, 3), hours=random.randint(1, 12))
@@ -289,18 +254,15 @@ def _create_random_purchase(customer_address: Address) -> Purchase:
              if delivered_datetime < purchase_datetime: delivered_datetime = purchase_datetime + datetime.timedelta(minutes=30)
              purchase_obj.delivered_date = delivered_datetime.isoformat(timespec='seconds').replace("+00:00", "Z")
     elif purchase_obj.order_type == "Online - Shipped":
-        status_pool = ORDER_STATUS_SHIPPED or ["Unknown"]
+        status_pool = ORDER_STATUS_SHIPPED
         purchase_obj.order_status = random.choice(status_pool)
-        # Use a different non-empty address sometimes
         purchase_obj.shipping_address = customer_address if random.random() > 0.15 else _create_random_address()
-
         if purchase_obj.order_status not in ["Processing", "Cancelled"]:
             est_delivery_delay = datetime.timedelta(days=random.randint(3, 10))
             est_delivery_datetime = purchase_datetime + est_delivery_delay
             purchase_obj.estimated_delivery_date = est_delivery_datetime.isoformat(timespec='seconds').replace("+00:00", "Z")
             tracking = "1Z" + "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=16))
-            purchase_obj.tracking_number = tracking if tracking.strip() else "TRACKING_FAILED" # Ensure non-empty tracking
-
+            purchase_obj.tracking_number = tracking if tracking.strip() else "TRACKING_FAILED"
             if purchase_obj.order_status == "Delivered":
                 delivery_delay_min_td = datetime.timedelta(days=1)
                 delivery_datetime_min = purchase_datetime + delivery_delay_min_td
@@ -314,11 +276,10 @@ def _create_random_purchase(customer_address: Address) -> Purchase:
                 if delivered_datetime <= purchase_datetime: delivered_datetime = purchase_datetime + datetime.timedelta(hours=random.randint(1, 24))
                 purchase_obj.delivered_date = delivered_datetime.isoformat(timespec='seconds').replace("+00:00", "Z")
 
-    if not purchase_obj.order_status: purchase_obj.order_status = "Unknown" # Final safety check
+    if not purchase_obj.order_status: purchase_obj.order_status = "Unknown"
     return purchase_obj
 
 def _create_random_recommendation(customer_interests: List[str], recent_purchases: List[Purchase]) -> Recommendation:
-    """Generates Recommendation ensuring non-empty fields."""
     rec_item_tpl = random.choice(SAMPLE_ITEMS)
     reason_template = random.choice(RECOMMENDATION_REASONS)
     reason = reason_template
@@ -342,33 +303,24 @@ def _create_random_recommendation(customer_interests: List[str], recent_purchase
     item_id_suffix = str(uuid.uuid4())[:4]
     return Recommendation(
         item_id=f"{item_id_base}_{item_id_suffix}" if item_id_base else f"REC_UNKNOWN_{item_id_suffix}",
-        item_name=rec_item_tpl[1], # Already ensured non-empty
-        category=rec_item_tpl[2], # Already ensured non-empty
-        reason=reason
+        item_name=rec_item_tpl[1], category=rec_item_tpl[2], reason=reason
     )
 
 def _create_random_customer() -> Customer:
-    """Generates a Customer ensuring no fields are None or empty string (uses placeholders)."""
     first_name = fake.first_name() or "First"
     last_name = fake.last_name() or "Last"
     email_user_part = f"{first_name.lower()}.{last_name.lower()}{random.randint(1,99)}"
     email_domain = fake.free_email_domain() or "example.com"
     email = f"{email_user_part}@{email_domain}"
-
-    phone = ""
-    # Initialize first, THEN loop
+    phone = "";
     while not phone:
         raw_phone = fake.phone_number()
         phone = raw_phone.split('x')[0].strip()
-        if not phone:
-             phone="000-000-0000" # Add fallback if empty after split
-
-    address = _create_random_address() # Guarantees non-empty
-    preferences = _create_random_preferences() # Guarantees non-empty
-
+        if not phone: phone="000-000-0000"
+    address = _create_random_address()
+    preferences = _create_random_preferences()
     is_member = random.choice([True, False])
     circle_number = ("TC" + "".join(random.choices("0123456789", k=10))) if is_member else PLACEHOLDER_CIRCLE_NUM
-
     return Customer(
         customer_id=str(uuid.uuid4()), first_name=first_name, last_name=last_name,
         phone_number=phone, email=email, target_circle_member=is_member,
@@ -382,7 +334,7 @@ def generate_customer_data(num_customers: int, seed: Optional[int] = None) -> Li
     within the year 2025. Ensures NO fields in the output have 'null'/'None' values
     OR empty strings (""). Uses descriptive placeholders (like 'DATE_NOT_APPLICABLE')
     for fields where data might not be logically applicable.
-    Guarantees valid phone numbers and non-empty address fields.
+    Guarantees valid phone numbers and non-empty address fields. Includes order_id.
     """
     if seed is not None:
         Faker.seed(seed); random.seed(seed)
